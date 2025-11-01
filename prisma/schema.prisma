@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Cambiar a "postgresql" si migrás a Postgres
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id             String   @id @default(cuid())
+  dni            String   @unique
+  firstName      String
+  lastName       String
+  birthDate      DateTime
+  sex            String // "F" | "M" 
+  phone          String?
+  email          String?  @unique
+  address        String?
+  obraSocial     String?
+  codigoAfiliado String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orders TestOrder[]
+}
+
+model Doctor {
+  id            String  @id @default(cuid())
+  fullName      String
+  licenseNumber String? @unique
+  phone         String?
+  email         String? @unique
+
+  orders TestOrder[]
+}
+
+model ExamType {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String?
+  unit        String?
+  refRange    String?
+
+  orderItems OrderItem[]
+}
+
+model TestOrder {
+  id        String   @id @default(cuid())
+  patientId String
+  doctorId  String?
+  status    String   @default("PENDIENTE") // PENDING | COLLECTED | IN_PROCESS | COMPLETED | CANCELED
+  createdAt DateTime @default(now())
+  notes     String?
+  orderNumber String?  @unique
+  title       String?
+  patient Patient     @relation(fields: [patientId], references: [id])
+  doctor  Doctor?     @relation(fields: [doctorId], references: [id])
+  items   OrderItem[]
+  samples Sample[]
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  examTypeId String
+  status     String  @default("PENDING") // PENDING | IN_PROCESS | DONE
+  result     Result?
+
+  order    TestOrder @relation(fields: [orderId], references: [id])
+  examType ExamType  @relation(fields: [examTypeId], references: [id])
+}
+
+model Sample {
+  id          String    @id @default(cuid())
+  orderId     String
+  sampleType  String // BLOOD | URINE | STOOL | SALIVA | OTHER
+  collectedAt DateTime?
+  notes       String?
+
+  order TestOrder @relation(fields: [orderId], references: [id])
+}
+
+model Result {
+  id          String   @id @default(cuid())
+  orderItemId String   @unique
+  value       String
+  observedAt  DateTime @default(now())
+  unit        String?
+  refRange    String?
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("OPERATOR") // ADMIN | OPERATOR | VIEWER
+  createdAt    DateTime @default(now())
+}
+
+model Nomenclador {
+  id            String @id @default(cuid())
+  codigo        Int @unique // ej: "660002"
+  determinacion String // ej: "ACETONURIA"
+  ub            Float // ej: 1, 3, 12.5
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
