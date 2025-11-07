@@ -13,7 +13,7 @@ model Patient {
   firstName      String
   lastName       String
   birthDate      DateTime
-  sex            String // "F" | "M" 
+  sex            String // "F" | "M" | "X"
   phone          String?
   email          String?  @unique
   address        String?
@@ -35,41 +35,22 @@ model Doctor {
   orders TestOrder[]
 }
 
-model ExamType {
-  id          String  @id @default(cuid())
-  code        String  @unique
-  name        String
-  description String?
-  unit        String?
-  refRange    String?
-
-  orderItems OrderItem[]
-}
-
 model TestOrder {
-  id        String   @id @default(cuid())
-  patientId String
-  doctorId  String?
-  status    String   @default("PENDIENTE") // PENDING | COLLECTED | IN_PROCESS | COMPLETED | CANCELED
-  createdAt DateTime @default(now())
-  notes     String?
+  id          String   @id @default(cuid())
+  patientId   String
+  doctorId    String?
+  status      String   @default("PENDIENTE") // PENDING | COMPLETED | CANCELED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  notes       String?
   orderNumber String?  @unique
   title       String?
-  patient Patient     @relation(fields: [patientId], references: [id])
-  doctor  Doctor?     @relation(fields: [doctorId], references: [id])
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor? @relation(fields: [doctorId], references: [id])
+
   items   OrderItem[]
   samples Sample[]
-}
-
-model OrderItem {
-  id         String  @id @default(cuid())
-  orderId    String
-  examTypeId String
-  status     String  @default("PENDING") // PENDING | IN_PROCESS | DONE
-  result     Result?
-
-  order    TestOrder @relation(fields: [orderId], references: [id])
-  examType ExamType  @relation(fields: [examTypeId], references: [id])
 }
 
 model Sample {
@@ -79,7 +60,7 @@ model Sample {
   collectedAt DateTime?
   notes       String?
 
-  order TestOrder @relation(fields: [orderId], references: [id])
+  order TestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Result {
@@ -90,7 +71,9 @@ model Result {
   unit        String?
   refRange    String?
 
-  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
 }
 
 model User {
@@ -103,10 +86,106 @@ model User {
 
 model Nomenclador {
   id            String @id @default(cuid())
-  codigo        Int @unique // ej: "660002"
-  determinacion String // ej: "ACETONURIA"
+  codigo        Int    @unique // ej: 660002
+  determinacion String // ej: ACETONURIA
   ub            Float // ej: 1, 3, 12.5
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Cada código (660042, etc.)
+model ExamType {
+  id      String  @id @default(cuid())
+  code    String  @unique
+  name    String
+  isPanel Boolean @default(false)
+
+  items      ExamItemDef[]
+  orderItems OrderItem[]
+}
+
+// Definición de los ítems a completar para un código (nombre/unidad fijos)
+model ExamItemDef {
+  id         String   @id @default(cuid())
+  examTypeId String
+  examType   ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+
+  key   String // identificador interno
+  label String // etiqueta visible
+  unit  String? // "U/L"
+
+  sortOrder Int      @default(0)
+  refText   String? // “0.70–1.20 mg/dL”, “Negativo”, “No reactivas”, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kind          String?
+  analytes      OrderItemAnalyte[]
+  ExamItemRange ExamItemRange[]
+
+  @@unique([examTypeId, key])
+}
+
+// Reglas de referencia (sexo/edad, extensible)
+model ExamItemRange {
+  id     String      @id @default(cuid())
+  itemId String
+  item   ExamItemDef @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  sex        String? // "F" | "M" | "X" | null = cualquiera
+  minAgeDays Int? // edad mínima en días
+  maxAgeDays Int? // edad máxima en días
+
+  // Para NUMERIC
+  low  Float?
+  high Float?
+
+  // Para TEXT/ENUM
+  expectedText String?
+
+  note String?
+}
+
+// Instancia de un código dentro de una orden
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  examTypeId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  order    TestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  examType ExamType  @relation(fields: [examTypeId], references: [id])
+
+  analytes OrderItemAnalyte[]
+  results  Result[]
+}
+
+// Resultado por sub-ítem (instancias a completar en esa orden)
+model OrderItemAnalyte {
+  id          String @id @default(cuid())
+  orderItemId String
+  itemDefId   String
+
+  orderItem OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  itemDef   ExamItemDef @relation(fields: [itemDefId], references: [id])
+
+  // valor cargado
+  valueNum  Float?
+  valueText String?
+  status    String  @default("PENDING") // "PENDING"|"DONE"
+  comment   String?
+
+  // snapshot de unidad y referencias al momento de crear la orden
+  unit        String?
+  refLow      Float?
+  refHigh     Float?
+  refExpected String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderItemId])
+  @@index([itemDefId])
 }

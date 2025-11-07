@@ -13,24 +13,75 @@ export async function listOrders(req: Request, res: Response) {
     orderBy: { createdAt: 'desc' },
     include: {
       doctor: true,
-      items: { include: { examType: true, result: true } },
-      patient: { select: { id: true, firstName: true, lastName: true, dni: true } },
+      patient: {
+        select: { id: true, firstName: true, lastName: true, dni: true },
+      },
+      items: {
+        include: {
+          examType: true,
+          // ✅ resultados por sub-ítem (recomendado)
+          analytes: { include: { itemDef: true } },
+          // ✅ si aún usás el modelo Result, va en plural
+          results: true,
+          // (opcional) la orden padre
+          // order: true,
+        },
+      },
     },
   });
+
   res.json(data);
 }
 
 export async function getOrder(req: Request, res: Response) {
   const { id } = req.params;
-  const order = await prisma.testOrder.findUnique({
-    where: { id },
-    include: {
-      doctor: true,
-      items: { include: { examType: true, result: true } },
-      patient: { select: { id: true, firstName: true, lastName: true, dni: true } },
+
+  const baseInclude = {
+    doctor: true,
+    patient: { select: { id: true, firstName: true, lastName: true, dni: true } },
+    items: {
+      include: {
+        examType: true,
+        analytes: { include: { itemDef: true } }, // <— devolvemos analytes + definición
+      },
     },
+  } as const;
+
+  let order = await prisma.testOrder.findUnique({
+    where: { id },
+    include: baseInclude,
   });
   if (!order) return res.status(404).json({ error: 'Orden no encontrada' });
+
+  // Asegurá analytes en cada item (lazy, por si no se crearon al generar la orden)
+  for (const item of order.items) {
+    const defs = await prisma.examItemDef.findMany({
+      where: { examTypeId: item.examTypeId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const missing = defs.filter(d => !item.analytes.some(a => a.itemDefId === d.id));
+    if (missing.length) {
+      await prisma.$transaction(
+        missing.map(d =>
+          prisma.orderItemAnalyte.create({
+            data: {
+              orderItemId: item.id,
+              itemDefId: d.id,
+              unit: d.unit || null, // snapshot básico
+            },
+          }),
+        ),
+      );
+    }
+  }
+
+  // recarga la orden con analytes ya completos
+  order = await prisma.testOrder.findUnique({
+    where: { id },
+    include: baseInclude,
+  });
+
   res.json(order);
 }
 
@@ -102,7 +153,7 @@ export async function createOrder(req: Request, res: Response) {
     },
     include: {
       doctor: true,
-      items: { include: { examType: true, result: true } },
+      items: { include: { examType: true, results: true } },
       patient: { select: { id: true, firstName: true, lastName: true, dni: true } },
     },
   });
@@ -149,4 +200,52 @@ export async function deleteOrder(req: Request, res: Response) {
   ]);
 
   res.status(204).end();
+}
+
+export async function updateAnalytesBulk(req: Request, res: Response) {
+  const { orderId } = req.params;
+  const { updates } = req.body as {
+    updates: { orderItemId: string; analyteId: string; value: any }[];
+  };
+
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return res.status(400).json({ error: 'Lista de updates vacía' });
+  }
+
+  // Traemos analytes con sus itemDef para decidir NUMERIC/TEXT y validar pertenencia
+  const analyteIds = updates.map(u => u.analyteId);
+  const existing = await prisma.orderItemAnalyte.findMany({
+    where: { id: { in: analyteIds } },
+    include: { itemDef: true, orderItem: true },
+  });
+
+  const existingMap = new Map(existing.map(a => [a.id, a]));
+
+  const ops = updates.map(({ orderItemId, analyteId, value }) => {
+    const a = existingMap.get(analyteId);
+    if (!a || a.orderItemId !== orderItemId || a.orderItem.orderId !== orderId) {
+      throw new Error(`Analyte inválido: ${analyteId}`);
+    }
+    const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+    const data: any = {};
+    if (value === null || value === '') {
+      data.valueNum = null;
+      data.valueText = null;
+      data.status = 'PENDING';
+    } else if (kind === 'NUMERIC') {
+      const num = Number(value);
+      if (!Number.isFinite(num)) throw new Error(`Valor numérico inválido para ${a.itemDef.label}`);
+      data.valueNum = num;
+      data.valueText = null;
+      data.status = 'DONE';
+    } else {
+      data.valueText = String(value);
+      data.valueNum = null;
+      data.status = 'DONE';
+    }
+    return prisma.orderItemAnalyte.update({ where: { id: analyteId }, data });
+  });
+
+  await prisma.$transaction(ops);
+  res.json({ ok: true, count: ops.length });
 }
