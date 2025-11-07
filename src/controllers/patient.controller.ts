@@ -64,7 +64,7 @@ export async function updatePatient(req: Request, res: Response) {
       where: { id },
       data: parse.data as any,
     });
-    res.json(updated);
+    res.status(201).json({ ok: true, message: 'Paciente modificado', data: updated });
   } catch (e: any) {
     if (e?.code === 'P2025') {
       return res.status(404).json({ error: 'Paciente no encontrado' });

@@ -19,9 +19,9 @@ export async function listOrders(req: Request, res: Response) {
       items: {
         include: {
           examType: true,
-          // ✅ resultados por sub-ítem (recomendado)
+      
           analytes: { include: { itemDef: true } },
-          // ✅ si aún usás el modelo Result, va en plural
+         
           results: true,
           // (opcional) la orden padre
           // order: true,
@@ -38,11 +38,11 @@ export async function getOrder(req: Request, res: Response) {
 
   const baseInclude = {
     doctor: true,
-    patient: { select: { id: true, firstName: true, lastName: true, dni: true } },
+    patient: true,
     items: {
       include: {
         examType: true,
-        analytes: { include: { itemDef: true } }, // <— devolvemos analytes + definición
+        analytes: { include: { itemDef: true } }, 
       },
     },
   } as const;
@@ -104,13 +104,13 @@ export async function createOrder(req: Request, res: Response) {
 
   // doctor opcional: findOrCreate por nombre
   let doctorId: string | undefined = undefined;
-  if (doctorName && String(doctorName).trim()) {
-    const full = String(doctorName).trim();
-    const existing = await prisma.doctor.findFirst({ where: { fullName: full } });
-    doctorId = existing
-      ? existing.id
-      : (await prisma.doctor.create({ data: { fullName: full } })).id;
-  }
+  // if (doctorName && String(doctorName).trim()) {
+  //   const full = String(doctorName).trim();
+  //   const existing = await prisma.doctor.findFirst({ where: { fullName: full } });
+  //   doctorId = existing
+  //     ? existing.id
+  //     : (await prisma.doctor.create({ data: { fullName: full } })).id;
+  // }
 
   // Asegurar ExamType por cada code (busca nombre en Nomenclador si existe)
   const examTypeIds: string[] = [];
