@@ -13,12 +13,16 @@ model Patient {
   firstName      String
   lastName       String
   birthDate      DateTime
-  sex            String // "F" | "M" | "X"
+  sex            String // "F" | "M" |
   phone          String?
-  email          String?  @unique
+  email          String?  
   address        String?
   obraSocial     String?
   codigoAfiliado String?
+  notes      String?
+  diabetico  Boolean?   
+  tiroides   Boolean?   
+  accountEntries PatientAccountEntry[] // para las cuentas
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -51,7 +55,11 @@ model TestOrder {
 
   items   OrderItem[]
   samples Sample[]
+
+  // 🔁 back-relation para saldar el error
+  accountEntries PatientAccountEntry[]
 }
+
 
 model Sample {
   id          String    @id @default(cuid())
@@ -117,34 +125,14 @@ model ExamItemDef {
 
   sortOrder Int      @default(0)
   refText   String? // “0.70–1.20 mg/dL”, “Negativo”, “No reactivas”, etc.
+  method    String? @default("N/A")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   kind          String?
   analytes      OrderItemAnalyte[]
-  ExamItemRange ExamItemRange[]
 
   @@unique([examTypeId, key])
-}
-
-// Reglas de referencia (sexo/edad, extensible)
-model ExamItemRange {
-  id     String      @id @default(cuid())
-  itemId String
-  item   ExamItemDef @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  sex        String? // "F" | "M" | "X" | null = cualquiera
-  minAgeDays Int? // edad mínima en días
-  maxAgeDays Int? // edad máxima en días
-
-  // Para NUMERIC
-  low  Float?
-  high Float?
-
-  // Para TEXT/ENUM
-  expectedText String?
-
-  note String?
 }
 
 // Instancia de un código dentro de una orden
@@ -153,13 +141,20 @@ model OrderItem {
   orderId    String
   examTypeId String
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
+  updatedAt  DateTime @updatedAt
 
   order    TestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   examType ExamType  @relation(fields: [examTypeId], references: [id])
 
   analytes OrderItemAnalyte[]
   results  Result[]
+
+  // 💰 pasar a centavos
+  priceCents             Int?      // antes: Decimal? @db.Decimal(10,2)
+  paidAtCreationCents    Int       @default(0) // antes: Decimal? @db.Decimal(10,2)
+
+  // 🔁 back-relation necesaria (ver error 2)
+  accountEntries PatientAccountEntry[]
 }
 
 // Resultado por sub-ítem (instancias a completar en esa orden)
@@ -188,4 +183,45 @@ model OrderItemAnalyte {
 
   @@index([orderItemId])
   @@index([itemDefId])
+}
+
+
+model SocialWork {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+
+// cuenta paciente
+
+enum AccountEntryKind {
+  CHARGE
+  PAYMENT
+  ADJUSTMENT
+}
+
+model PatientAccountEntry {
+  id           String           @id @default(cuid())
+  patientId    String
+  kind         AccountEntryKind
+
+  // 💰 en centavos
+  amountCents  Int              // antes: Decimal @db.Decimal(12,2)
+
+  description  String?
+  createdAt    DateTime         @default(now())
+
+  testOrderId  String?
+  orderItemId  String?
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  testOrder TestOrder? @relation(fields: [testOrderId], references: [id], onDelete: SetNull)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([testOrderId])
+  @@index([orderItemId])
 }

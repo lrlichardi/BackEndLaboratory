@@ -1,3 +1,4 @@
+import { note } from 'pdfkit';
 import { z } from 'zod';
 
 export const patientCreateSchema = z.object({
@@ -9,6 +10,11 @@ export const patientCreateSchema = z.object({
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   address: z.string().optional().nullable(),
+  obraSocial: z.string().optional().nullable(),
+  codigoAfiliado: z.string().optional().nullable(),
+  diabetico: z.boolean().optional().nullable(),
+  tiroides: z.boolean().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export const patientUpdateSchema = patientCreateSchema.partial().extend({

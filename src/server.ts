@@ -9,8 +9,11 @@ import orderRoutes from './routes/order.routes.js';
 import orderItemRoutes from './routes/orderItem.routes.js';
 import nomencladorRoutes from './routes/nomenclador.routes.js';
 import examItemDefRoutes from './routes/examItemDef.routes.js';
+import doctorRoutes from './routes/doctor.routes.js';
+import socialWorkRouter from './controllers/socialWork.controller';
+import patientAccountRoutes from './routes/patientAccount.routes.js';
 
-import { prismaReady } from './prisma.js'; // 👈 espera a Prisma/PRAGMAs
+import { prismaReady } from './prisma.js'; 
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -29,6 +32,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/order-items', orderItemRoutes);
 app.use('/api/nomenclador', nomencladorRoutes);
 app.use('/api/exam-item-def', examItemDefRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/social-works', socialWorkRouter);
+app.use('/api/patients', patientAccountRoutes);
 
 // Manejo de errores
 app.use((err: any, _req: any, res: any, _next: any) => {

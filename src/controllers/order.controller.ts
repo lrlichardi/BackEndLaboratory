@@ -85,32 +85,22 @@ export async function getOrder(req: Request, res: Response) {
   res.json(order);
 }
 
-/**
- * Body:
- * {
- *   patientId: string,
- *   orderNumber?: string,
- *   title?: string,
- *   doctorName?: string,  // crea/reutiliza Doctor
- *   examCodes: string[],  // códigos de nomenclador
- *   notes?: string
- * }
- */
+
 export async function createOrder(req: Request, res: Response) {
   const { patientId, orderNumber, title, doctorName, examCodes, notes } = req.body || {};
   if (!patientId || !Array.isArray(examCodes) || examCodes.length === 0) {
     return res.status(400).json({ error: 'patientId y examCodes[] son requeridos' });
   }
-
+ 
   // doctor opcional: findOrCreate por nombre
   let doctorId: string | undefined = undefined;
-  // if (doctorName && String(doctorName).trim()) {
-  //   const full = String(doctorName).trim();
-  //   const existing = await prisma.doctor.findFirst({ where: { fullName: full } });
-  //   doctorId = existing
-  //     ? existing.id
-  //     : (await prisma.doctor.create({ data: { fullName: full } })).id;
-  // }
+  if (doctorName && String(doctorName).trim()) {
+    const full = String(doctorName).trim();
+    const existing = await prisma.doctor.findFirst({ where: { fullName: full } });
+    doctorId = existing
+      ? existing.id
+      : (await prisma.doctor.create({ data: { fullName: full } })).id;
+  }
 
   // Asegurar ExamType por cada code (busca nombre en Nomenclador si existe)
   const examTypeIds: string[] = [];
@@ -186,6 +176,27 @@ console.log(status)
   res.json(updated);
 }
 
+export async function patchOrder(req: Request, res: Response) {
+  const { id } = req.params;
+  const { orderNumber, title, doctorName, notes } = req.body;
+
+  const exists = await prisma.testOrder.findUnique({ where: { id } });
+  if (!exists) return res.status(404).json({ error: 'Orden no encontrada' });
+
+  const updated = await prisma.testOrder.update({
+    where: { id },
+    data: {
+      orderNumber: orderNumber || undefined,
+      title: title || undefined,
+      notes: notes || undefined,
+      // doctorName requiere lógica adicional si quieres crear/buscar doctor
+    },
+  });
+
+  res.json(updated);
+}
+
+
 export async function deleteOrder(req: Request, res: Response) {
   const { id } = req.params;
 
@@ -197,6 +208,28 @@ export async function deleteOrder(req: Request, res: Response) {
     prisma.orderItem.deleteMany({ where: { orderId: id } }),
     prisma.sample.deleteMany({ where: { orderId: id } }),
     prisma.testOrder.delete({ where: { id } }),
+  ]);
+
+  res.status(204).end();
+}
+
+export async function deleteOrderItem(req: Request, res: Response) {
+  const { itemId } = req.params;
+
+  const exists = await prisma.orderItem.findUnique({ 
+    where: { id: itemId },
+    include: { order: true }
+  });
+  
+  if (!exists) {
+    return res.status(404).json({ error: 'Item no encontrado' });
+  }
+
+  // Eliminar en cascada: primero analytes y results, luego el item
+  await prisma.$transaction([
+    prisma.orderItemAnalyte.deleteMany({ where: { orderItemId: itemId } }),
+    prisma.result.deleteMany({ where: { orderItemId: itemId } }),
+    prisma.orderItem.delete({ where: { id: itemId } }),
   ]);
 
   res.status(204).end();
@@ -248,4 +281,55 @@ export async function updateAnalytesBulk(req: Request, res: Response) {
 
   await prisma.$transaction(ops);
   res.json({ ok: true, count: ops.length });
+}
+
+export async function addItemsByCodes(req: Request, res: Response) {
+  const { id } = req.params;
+  const { codes } = req.body;
+
+  if (!Array.isArray(codes)) {
+    return res.status(400).json({ error: 'codes debe ser un array' });
+  }
+
+  const order = await prisma.testOrder.findUnique({ where: { id } });
+  if (!order) return res.status(404).json({ error: 'Orden no encontrada' });
+
+  // Similar a createOrder: buscar/crear ExamType por código
+  const examTypeIds: string[] = [];
+  for (const code of codes) {
+    let et = await prisma.examType.findUnique({ where: { code } });
+    if (!et) {
+      et = await prisma.examType.create({
+        data: { code, name: `Estudio ${code}` },
+      });
+    }
+    examTypeIds.push(et.id);
+  }
+
+  // Crear los items
+  await prisma.orderItem.createMany({
+    data: examTypeIds.map(examTypeId => ({
+      orderId: id,
+      examTypeId,
+    })),
+  });
+
+  res.json({ ok: true, added: examTypeIds.length });
+}
+
+
+export async function checkOrderNumber(req: Request, res: Response) {
+  const orderNumber = String(req.query.orderNumber || '').trim();
+  const excludeId = req.query.excludeId ? String(req.query.excludeId) : null;
+  if (!orderNumber) return res.status(400).json({ error: 'orderNumber requerido' });
+
+  const exists = await prisma.testOrder.findFirst({
+    where: {
+      orderNumber,
+      ...(excludeId ? { NOT: { id: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+
+  return res.json({ exists: !!exists });
 }

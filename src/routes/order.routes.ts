@@ -1,13 +1,32 @@
 import { Router } from 'express';
-import { deleteOrder, updateOrderStatus, listOrders, createOrder, getOrder, updateAnalytesBulk } from '../controllers/order.controller.js';
-import { generateOrderReport } from '../controllers/report.controller.js';
+import {
+  listOrders,
+  getOrder,
+  createOrder,
+  updateOrderStatus,
+  deleteOrder,
+  patchOrder,
+  deleteOrderItem,
+  updateAnalytesBulk,
+  addItemsByCodes,
+  checkOrderNumber
+} from '../controllers/order.controller.js';
 
-const r = Router();
-r.get('/', listOrders);
-r.get('/:id', getOrder);
-r.post('/', createOrder);
-r.put('/:id/status', updateOrderStatus);
-r.put('/:orderId/analytes/bulk', updateAnalytesBulk);
-r.delete('/:id', deleteOrder);  
-r.get('/:orderId/report', generateOrderReport);                   
-export default r;
+const router = Router();
+
+// Rutas de órdenes
+router.get('/', listOrders);
+router.get('/:id', getOrder);
+router.post('/', createOrder);
+router.patch('/:id', patchOrder);  // 👈 Para actualizar metadata
+router.put('/:id/status', updateOrderStatus);
+router.delete('/:id', deleteOrder);
+router.get('/orders/check-number', checkOrderNumber);
+// Rutas de items
+router.delete('/items/:itemId', deleteOrderItem);  // 👈 Para eliminar items individuales
+router.post('/:id/items:addByCodes', addItemsByCodes);  // 👈 Para agregar items por códigos
+
+// Rutas de analytes
+router.put('/:orderId/analytes/bulk', updateAnalytesBulk);
+
+export default router;

@@ -8,7 +8,7 @@ async function ensureExamTypeByCode(code: string) {
     where: { code },
     select: { id: true, code: true, name: true, isPanel: true },
   });
-  console.log("estoy et", et)
+ 
   
   if (et && et != null) return et;
 
@@ -16,8 +16,6 @@ async function ensureExamTypeByCode(code: string) {
   const n = await prisma.nomenclador.findUnique({ 
     where: { codigo: Number(code) } 
   }).catch(() => null);
-  
-  console.log("estoy es n", n)
   
   // Si tampoco existe en Nomenclador, lanzar error
   if (!n) {
@@ -57,7 +55,7 @@ export async function listExamItems(req: Request, res: Response) {
 
 export async function createExamItem(req: Request, res: Response) {
   try {
-    const { code, key, label, unit, kind, sortOrder, refText } = req.body || {};
+    const { code, key, label, unit, kind, sortOrder, refText , method } = req.body || {};
     if (!code || !key || !label) {
       return res.status(400).json({ error: 'code, key y label son requeridos' });
     }
@@ -83,6 +81,7 @@ export async function createExamItem(req: Request, res: Response) {
         kind: (kind || 'NUMERIC').toUpperCase(),
         sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
         refText: (refText?.trim?.() || null),
+        method: (method?.trim?.() || null),
       },
     });
     
@@ -95,7 +94,8 @@ export async function createExamItem(req: Request, res: Response) {
 // PUT /api/exam-item-def/:id
 export async function updateExamItem(req: Request, res: Response) {
   const { id } = req.params;
-  const { key, label, unit, kind, sortOrder, refText } = req.body || {};
+  const { key, label, unit, kind, sortOrder, refText, method } = req.body || {};
+  console.log(method)
   const updated = await prisma.examItemDef.update({
     where: { id },
     data: {
@@ -105,6 +105,7 @@ export async function updateExamItem(req: Request, res: Response) {
       kind: kind ? String(kind).toUpperCase() : undefined,
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : undefined,
       refText: refText !== undefined ? (refText?.trim?.() || null) : undefined,
+      method: (method?.trim?.() || null),
     },
   });
   res.json(updated);
