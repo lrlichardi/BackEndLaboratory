@@ -56,9 +56,7 @@ export async function createPatient(req: Request, res: Response) {
 
 export async function updatePatient(req: Request, res: Response) {
   const { id } = req.params;
-  
   const parse = patientUpdateSchema.safeParse(req.body);
- 
   if (!parse.success) return res.status(400).json({ error: parse.error.flatten() });
   try {
     const updated = await prisma.patient.update({

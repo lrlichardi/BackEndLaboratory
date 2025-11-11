@@ -209,7 +209,7 @@ model PatientAccountEntry {
   kind         AccountEntryKind
 
   // 💰 en centavos
-  amountCents  Int              // antes: Decimal @db.Decimal(12,2)
+  amountCents  Int             
 
   description  String?
   createdAt    DateTime         @default(now())

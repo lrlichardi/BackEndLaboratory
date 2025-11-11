@@ -3,34 +3,43 @@ import { prisma } from '../prisma.js';
 
 // Busca (o crea) el ExamType por código; intenta traer nombre/UB desde Nomenclador si existe
 async function ensureExamTypeByCode(code: string) {
-  
-  let et = await prisma.examType.findUnique({
-    where: { code },
-    select: { id: true, code: true, name: true, isPanel: true },
-  });
- 
-  
-  if (et && et != null) return et;
+  const numericCode = parseInt(code, 10);
 
-  // Si no existe ExamType, PRIMERO verificar que exista en Nomenclador
-  const n = await prisma.nomenclador.findUnique({ 
-    where: { codigo: Number(code) } 
-  }).catch(() => null);
-  
-  // Si tampoco existe en Nomenclador, lanzar error
+  // Traigo en paralelo el ExamType y el Nomenclador
+  const [et, n] = await Promise.all([
+    prisma.examType.findUnique({
+      where: { code },
+      select: { id: true, code: true, name: true, isPanel: true },
+    }),
+    prisma.nomenclador.findUnique({
+      where: { codigo: numericCode },
+      select: { determinacion: true },
+    }),
+  ]);
+
+  // Si no existe en Nomenclador, NO permitimos crear
   if (!n) {
     throw new Error(`El código ${code} no existe en el Nomenclador`);
   }
 
-  // Solo crear si existe en Nomenclador
-  const name = n.determinacion ?? `Estudio ${code}`;
+  // Si ya hay ExamType pero con nombre distinto, lo sincronizo
+  if (et) {
+    if (et.name !== n.determinacion) {
+      const updated = await prisma.examType.update({
+        where: { code },
+        data: { name: n.determinacion },
+        select: { id: true, code: true, name: true, isPanel: true },
+      });
+      return updated;
+    }
+    return et;
+  }
 
-  et = await prisma.examType.create({
-    data: { code, name, isPanel: true },
+  // Si no existe, lo creo con el nombre correcto del Nomenclador
+  return prisma.examType.create({
+    data: { code, name: n.determinacion, isPanel: true }, // o dejá isPanel por defecto
     select: { id: true, code: true, name: true, isPanel: true },
   });
-  
-  return et;
 }
 
 export async function listExamItems(req: Request, res: Response) {
@@ -39,8 +48,8 @@ export async function listExamItems(req: Request, res: Response) {
     if (!/^\d{5,7}$/.test(code)) {
       return res.status(400).json({ error: 'Parámetro code inválido' });
     }
-
-    const et = await ensureExamTypeByCode(code);
+     console.log('codigo' , code)
+    const et =  await ensureExamTypeByCode(code);
 
     const items = await prisma.examItemDef.findMany({
       where: { examTypeId: et.id },
@@ -95,7 +104,7 @@ export async function createExamItem(req: Request, res: Response) {
 export async function updateExamItem(req: Request, res: Response) {
   const { id } = req.params;
   const { key, label, unit, kind, sortOrder, refText, method } = req.body || {};
-  console.log(method)
+
   const updated = await prisma.examItemDef.update({
     where: { id },
     data: {

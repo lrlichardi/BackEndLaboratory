@@ -19,12 +19,8 @@ export async function listOrders(req: Request, res: Response) {
       items: {
         include: {
           examType: true,
-      
           analytes: { include: { itemDef: true } },
-         
           results: true,
-          // (opcional) la orden padre
-          // order: true,
         },
       },
     },
@@ -42,7 +38,7 @@ export async function getOrder(req: Request, res: Response) {
     items: {
       include: {
         examType: true,
-        analytes: { include: { itemDef: true } }, 
+        analytes: { include: { itemDef: true } },
       },
     },
   } as const;
@@ -87,19 +83,9 @@ export async function getOrder(req: Request, res: Response) {
 
 
 export async function createOrder(req: Request, res: Response) {
-  const { patientId, orderNumber, title, doctorName, examCodes, notes } = req.body || {};
+  const { patientId, orderNumber, title, doctorId, examCodes, notes } = req.body || {};
   if (!patientId || !Array.isArray(examCodes) || examCodes.length === 0) {
     return res.status(400).json({ error: 'patientId y examCodes[] son requeridos' });
-  }
- 
-  // doctor opcional: findOrCreate por nombre
-  let doctorId: string | undefined = undefined;
-  if (doctorName && String(doctorName).trim()) {
-    const full = String(doctorName).trim();
-    const existing = await prisma.doctor.findFirst({ where: { fullName: full } });
-    doctorId = existing
-      ? existing.id
-      : (await prisma.doctor.create({ data: { fullName: full } })).id;
   }
 
   // Asegurar ExamType por cada code (busca nombre en Nomenclador si existe)
@@ -115,15 +101,15 @@ export async function createOrder(req: Request, res: Response) {
         // si tu Nomenclador.codigo es String:
         const n1 = await prisma.nomenclador.findUnique({ where: { codigo: code as any } as any });
         if (n1) nombre = n1.determinacion;
-      } catch {}
+      } catch { }
       if (!nombre && /^\d+$/.test(code)) {
         const asInt = Number(code);
         try {
           // si tu Nomenclador.codigo es Int:
-      
+
           const n2 = await prisma.nomenclador.findUnique({ where: { codigo: asInt } });
           if (n2) nombre = n2.determinacion;
-        } catch {}
+        } catch { }
       }
       et = await prisma.examType.create({
         data: { code, name: nombre ?? `Estudio ${code}` },
@@ -154,8 +140,7 @@ export async function createOrder(req: Request, res: Response) {
 export async function updateOrderStatus(req: Request, res: Response) {
   const { id } = req.params;
   const status = String(req.body?.status || '').toUpperCase();
-  
-console.log(status)
+
   if (!ORDER_STATUS.includes(status as OrderStatus)) {
     console.log(ORDER_STATUS.includes(status as OrderStatus))
     return res.status(400).json({ error: 'Estado inválido. Use PENDING | COMPLETED | CANCELED' });
@@ -163,7 +148,7 @@ console.log(status)
 
   const exists = await prisma.testOrder.findUnique({ where: { id } });
   if (!exists) return res.status(404).json({ error: 'Orden no encontrada' });
- 
+
   const updated = await prisma.testOrder.update({
     where: { id },
     data: { status },
@@ -178,7 +163,7 @@ console.log(status)
 
 export async function patchOrder(req: Request, res: Response) {
   const { id } = req.params;
-  const { orderNumber, title, doctorName, notes } = req.body;
+  const { orderNumber, title, doctorId, notes } = req.body;
 
   const exists = await prisma.testOrder.findUnique({ where: { id } });
   if (!exists) return res.status(404).json({ error: 'Orden no encontrada' });
@@ -188,8 +173,9 @@ export async function patchOrder(req: Request, res: Response) {
     data: {
       orderNumber: orderNumber || undefined,
       title: title || undefined,
+      doctorId: doctorId || undefined,
       notes: notes || undefined,
-      // doctorName requiere lógica adicional si quieres crear/buscar doctor
+
     },
   });
 
@@ -216,11 +202,11 @@ export async function deleteOrder(req: Request, res: Response) {
 export async function deleteOrderItem(req: Request, res: Response) {
   const { itemId } = req.params;
 
-  const exists = await prisma.orderItem.findUnique({ 
+  const exists = await prisma.orderItem.findUnique({
     where: { id: itemId },
     include: { order: true }
   });
-  
+
   if (!exists) {
     return res.status(404).json({ error: 'Item no encontrado' });
   }
@@ -231,8 +217,12 @@ export async function deleteOrderItem(req: Request, res: Response) {
     prisma.result.deleteMany({ where: { orderItemId: itemId } }),
     prisma.orderItem.delete({ where: { id: itemId } }),
   ]);
-
-  res.status(204).end();
+  return res.status(200).json({
+    ok: true,
+    message: 'Item borrado',
+    deletedItemId: itemId,
+    orderId: exists.orderId,
+  });
 }
 
 export async function updateAnalytesBulk(req: Request, res: Response) {
