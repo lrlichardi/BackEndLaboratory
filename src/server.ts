@@ -34,7 +34,7 @@ app.use('/api/nomenclador', nomencladorRoutes);
 app.use('/api/exam-item-def', examItemDefRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/social-works', socialWorkRouter);
-app.use('/api/patients', patientAccountRoutes);
+app.use('/api', patientAccountRoutes);
 
 // Manejo de errores
 app.use((err: any, _req: any, res: any, _next: any) => {

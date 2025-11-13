@@ -98,7 +98,6 @@ export async function updateDoctor(req: Request, res: Response) {
     if (email !== undefined)         data.email         = toNull(email);
 
     const updated = await prisma.doctor.update({ where: { id }, data });
-    console.log('updateDoctor updated:', updated);
     return res.status(200).json(updated);
   } catch (err: any) {
     if (err instanceof Prisma.PrismaClientKnownRequestError) {

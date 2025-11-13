@@ -8,23 +8,23 @@ datasource db {
 }
 
 model Patient {
-  id             String   @id @default(cuid())
-  dni            String   @unique
+  id             String                @id @default(cuid())
+  dni            String                @unique
   firstName      String
   lastName       String
   birthDate      DateTime
   sex            String // "F" | "M" |
   phone          String?
-  email          String?  
+  email          String?
   address        String?
   obraSocial     String?
   codigoAfiliado String?
-  notes      String?
-  diabetico  Boolean?   
-  tiroides   Boolean?   
+  notes          String?
+  diabetico      Boolean?
+  tiroides       Boolean?
   accountEntries PatientAccountEntry[] // para las cuentas
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
   orders TestOrder[]
 }
@@ -50,7 +50,9 @@ model TestOrder {
   orderNumber String?  @unique
   title       String?
 
-  patient Patient @relation(fields: [patientId], references: [id])
+  methodPay String?
+
+  patient Patient @relation(fields: [patientId], references: [id],onDelete: Cascade)
   doctor  Doctor? @relation(fields: [doctorId], references: [id])
 
   items   OrderItem[]
@@ -59,7 +61,6 @@ model TestOrder {
   // 🔁 back-relation para saldar el error
   accountEntries PatientAccountEntry[]
 }
-
 
 model Sample {
   id          String    @id @default(cuid())
@@ -125,12 +126,12 @@ model ExamItemDef {
 
   sortOrder Int      @default(0)
   refText   String? // “0.70–1.20 mg/dL”, “Negativo”, “No reactivas”, etc.
-  method    String? @default("N/A")
+  method    String?  @default("N/A")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  kind          String?
-  analytes      OrderItemAnalyte[]
+  kind     String?
+  analytes OrderItemAnalyte[]
 
   @@unique([examTypeId, key])
 }
@@ -150,8 +151,8 @@ model OrderItem {
   results  Result[]
 
   // 💰 pasar a centavos
-  priceCents             Int?      // antes: Decimal? @db.Decimal(10,2)
-  paidAtCreationCents    Int       @default(0) // antes: Decimal? @db.Decimal(10,2)
+  priceCents          Int? // antes: Decimal? @db.Decimal(10,2)
+  paidAtCreationCents Int  @default(0) // antes: Decimal? @db.Decimal(10,2)
 
   // 🔁 back-relation necesaria (ver error 2)
   accountEntries PatientAccountEntry[]
@@ -185,15 +186,12 @@ model OrderItemAnalyte {
   @@index([itemDefId])
 }
 
-
 model SocialWork {
   id        String   @id @default(cuid())
   name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-
 
 // cuenta paciente
 
@@ -204,18 +202,18 @@ enum AccountEntryKind {
 }
 
 model PatientAccountEntry {
-  id           String           @id @default(cuid())
-  patientId    String
-  kind         AccountEntryKind
+  id        String           @id @default(cuid())
+  patientId String
+  kind      AccountEntryKind
 
   // 💰 en centavos
-  amountCents  Int             
+  amountCents Int
 
-  description  String?
-  createdAt    DateTime         @default(now())
+  description String?
+  createdAt   DateTime @default(now())
 
-  testOrderId  String?
-  orderItemId  String?
+  testOrderId String?
+  orderItemId String?
 
   patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
   testOrder TestOrder? @relation(fields: [testOrderId], references: [id], onDelete: SetNull)

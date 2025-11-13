@@ -2,9 +2,7 @@
 import { Router } from 'express'
 import { getAccountSummary, listEntries, createEntry, deleteEntry } from '../controllers/patientAccount.controller'
 
-
 const r = Router()
-
 
 r.get('/patients/:id/account/summary', getAccountSummary)
 r.get('/patients/:id/account/entries', listEntries)

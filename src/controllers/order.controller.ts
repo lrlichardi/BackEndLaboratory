@@ -83,7 +83,7 @@ export async function getOrder(req: Request, res: Response) {
 
 
 export async function createOrder(req: Request, res: Response) {
-  const { patientId, orderNumber, title, doctorId, examCodes, notes } = req.body || {};
+  const { patientId, orderNumber, title, doctorId, examCodes, notes, methodPay} = req.body || {};
   if (!patientId || !Array.isArray(examCodes) || examCodes.length === 0) {
     return res.status(400).json({ error: 'patientId y examCodes[] son requeridos' });
   }
@@ -125,6 +125,7 @@ export async function createOrder(req: Request, res: Response) {
       title: title || null,
       doctorId: doctorId || null,
       notes: notes || null,
+      methodPay: methodPay || null,
       items: { create: examTypeIds.map((id) => ({ examTypeId: id })) },
     },
     include: {
@@ -142,7 +143,6 @@ export async function updateOrderStatus(req: Request, res: Response) {
   const status = String(req.body?.status || '').toUpperCase();
 
   if (!ORDER_STATUS.includes(status as OrderStatus)) {
-    console.log(ORDER_STATUS.includes(status as OrderStatus))
     return res.status(400).json({ error: 'Estado inválido. Use PENDING | COMPLETED | CANCELED' });
   }
 
@@ -163,7 +163,7 @@ export async function updateOrderStatus(req: Request, res: Response) {
 
 export async function patchOrder(req: Request, res: Response) {
   const { id } = req.params;
-  const { orderNumber, title, doctorId, notes } = req.body;
+  const { orderNumber, title, doctorId, notes, methodPay } = req.body;
 
   const exists = await prisma.testOrder.findUnique({ where: { id } });
   if (!exists) return res.status(404).json({ error: 'Orden no encontrada' });
@@ -174,6 +174,7 @@ export async function patchOrder(req: Request, res: Response) {
       orderNumber: orderNumber || undefined,
       title: title || undefined,
       doctorId: doctorId || undefined,
+      methodPay: methodPay || null,
       notes: notes || undefined,
 
     },
