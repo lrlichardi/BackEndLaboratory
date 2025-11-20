@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Patient {
-  id             String                @id @default(cuid())
-  dni            String                @unique
+  id             String   @id @default(cuid())
+  dni            String   @unique
   firstName      String
   lastName       String
   birthDate      DateTime
@@ -19,7 +19,7 @@ model Patient {
   address        String?
   obraSocial     String?
   codigoAfiliado String?
-  notes          String?
+
   diabetico      Boolean?
   tiroides       Boolean?
   accountEntries PatientAccountEntry[] // para las cuentas
@@ -27,6 +27,20 @@ model Patient {
   updatedAt      DateTime              @updatedAt
 
   orders TestOrder[]
+  notes  PatientNote[]
+}
+
+model PatientNote {
+  id        String @id @default(cuid())
+  patientId String
+  text      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
 }
 
 model Doctor {
@@ -40,7 +54,7 @@ model Doctor {
 }
 
 model TestOrder {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   patientId   String
   doctorId    String?
   status      String   @default("PENDING") // PENDING | COMPLETED | CANCELED
@@ -52,24 +66,12 @@ model TestOrder {
 
   methodPay String?
 
-  patient Patient @relation(fields: [patientId], references: [id],onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor  Doctor? @relation(fields: [doctorId], references: [id])
 
-  items   OrderItem[]
-  samples Sample[]
+  items OrderItem[]
 
-  // 🔁 back-relation para saldar el error
   accountEntries PatientAccountEntry[]
-}
-
-model Sample {
-  id          String    @id @default(cuid())
-  orderId     String
-  sampleType  String // BLOOD | URINE | STOOL | SALIVA | OTHER
-  collectedAt DateTime?
-  notes       String?
-
-  order TestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Result {
@@ -139,7 +141,7 @@ model ExamItemDef {
 // Instancia de un código dentro de una orden
 model OrderItem {
   id         String   @id @default(cuid())
-  orderId    String
+  orderId    Int
   examTypeId String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -212,7 +214,7 @@ model PatientAccountEntry {
   description String?
   createdAt   DateTime @default(now())
 
-  testOrderId String?
+  testOrderId Int?
   orderItemId String?
 
   patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)

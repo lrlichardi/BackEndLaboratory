@@ -12,6 +12,7 @@ import examItemDefRoutes from './routes/examItemDef.routes.js';
 import doctorRoutes from './routes/doctor.routes.js';
 import socialWorkRouter from './controllers/socialWork.controller';
 import patientAccountRoutes from './routes/patientAccount.routes.js';
+import patientNoteRoutes from './routes/patientNote.routes.js';
 
 import { prismaReady } from './prisma.js'; 
 
@@ -35,6 +36,7 @@ app.use('/api/exam-item-def', examItemDefRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/social-works', socialWorkRouter);
 app.use('/api', patientAccountRoutes);
+app.use('/api/patient-notes', patientNoteRoutes);
 
 // Manejo de errores
 app.use((err: any, _req: any, res: any, _next: any) => {
