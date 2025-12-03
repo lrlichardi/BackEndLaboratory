@@ -15,8 +15,8 @@ function toCents(input: string | number): number {
 
 
 // Helper: asegura que testOrderId / orderItemId pertenecen al paciente
-async function validateOwnership(patientId: string, testOrderId?: string | null, orderItemId?: string | null) {
-  let orderIdFromItem: string | null = null
+async function validateOwnership(patientId: string, testOrderId?: number | null, orderItemId?: string | null) {
+  let orderIdFromItem: number | null = null
 
 
   if (testOrderId) {
@@ -93,7 +93,7 @@ export async function listEntries(req: Request, res: Response) {
 export async function createEntry(req: Request, res: Response) {
   const { id: patientId } = req.params
   const { kind, amount, description, testOrderId, orderItemId } = req.body as {
-    kind: Kind; amount: number | string; description?: string; testOrderId?: string | null; orderItemId?: string | null
+    kind: Kind; amount: number | string; description?: string; testOrderId?: number | null; orderItemId?: string | null
   }
 
 
