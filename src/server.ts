@@ -10,7 +10,7 @@ import orderItemRoutes from './routes/orderItem.routes.js';
 import nomencladorRoutes from './routes/nomenclador.routes.js';
 import examItemDefRoutes from './routes/examItemDef.routes.js';
 import doctorRoutes from './routes/doctor.routes.js';
-import socialWorkRouter from './controllers/socialWork.controller.js';
+import socialWorkRouter from './routes/socialWork.routes.js';
 import patientAccountRoutes from './routes/patientAccount.routes.js';
 import patientNoteRoutes from './routes/patientNote.routes.js';
 

@@ -18,13 +18,13 @@ const router = Router();
 router.get('/', listOrders);
 router.get('/:id', getOrder);
 router.post('/', createOrder);
-router.patch('/:id', patchOrder);  // 👈 Para actualizar metadata
+router.patch('/:id', patchOrder);  
 router.put('/:id/status', updateOrderStatus);
 router.delete('/:id', deleteOrder);
 router.get('/orders/check-number', checkOrderNumber);
 // Rutas de items
-router.delete('/items/:itemId', deleteOrderItem);  // 👈 Para eliminar items individuales
-router.post('/:id/items:addByCodes', addItemsByCodes);  // 👈 Para agregar items por códigos
+router.delete('/items/:itemId', deleteOrderItem);  
+router.post('/:id/items:addByCodes', addItemsByCodes); 
 
 // Rutas de analytes
 router.put('/:orderId/analytes/bulk', updateAnalytesBulk);

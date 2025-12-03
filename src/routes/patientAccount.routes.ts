@@ -1,6 +1,6 @@
 // src/routes/patientAccount.routes.ts
 import { Router } from 'express'
-import { getAccountSummary, listEntries, createEntry, deleteEntry } from '../controllers/patientAccount.controller'
+import { getAccountSummary, listEntries, createEntry, deleteEntry } from '../controllers/patientAccount.controller.js'
 
 const r = Router()
 

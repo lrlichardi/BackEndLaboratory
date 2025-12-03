@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import { fi } from 'zod/v4/locales';
 
 // '' -> null (para poder "vaciar" campos opcionales)
 function toNull(v: unknown): string | null {

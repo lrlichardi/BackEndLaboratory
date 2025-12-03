@@ -1,6 +1,6 @@
 // src/controllers/patientAccount.controller.ts
 import { Request, Response } from 'express'
-import { prisma } from '../prisma'
+import { prisma } from '../prisma.js'
 
 
 type Kind = 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT'
