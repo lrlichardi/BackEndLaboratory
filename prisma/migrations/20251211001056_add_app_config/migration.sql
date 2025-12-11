@@ -1,0 +1,5 @@
+-- CreateTable
+CREATE TABLE "PriceConfig" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT DEFAULT 1,
+    "factor" DECIMAL NOT NULL
+);

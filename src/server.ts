@@ -13,8 +13,10 @@ import doctorRoutes from './routes/doctor.routes.js';
 import socialWorkRouter from './routes/socialWork.routes.js';
 import patientAccountRoutes from './routes/patientAccount.routes.js';
 import patientNoteRoutes from './routes/patientNote.routes.js';
-
+import dashboardRoutes from './routes/dashboard.routes.js'; 
+import priceRoutes from './routes/price.route.js';
 import { prismaReady } from './prisma.js'; 
+
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -27,6 +29,14 @@ app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json());
 app.use(morgan('dev'));
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Rutas
 app.use('/api/patients', patientRouter);
 app.use('/api/orders', orderRoutes);
@@ -37,6 +47,8 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/social-works', socialWorkRouter);
 app.use('/api', patientAccountRoutes);
 app.use('/api/patient-notes', patientNoteRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/price', priceRoutes);
 
 // Manejo de errores
 app.use((err: any, _req: any, res: any, _next: any) => {

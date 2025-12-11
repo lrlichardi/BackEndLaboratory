@@ -225,3 +225,8 @@ model PatientAccountEntry {
   @@index([testOrderId])
   @@index([orderItemId])
 }
+
+model PriceConfig {
+  id     Int      @id @default(1)
+  factor Int
+}
