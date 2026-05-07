@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma.js';
+import { Prisma } from '@prisma/client';
 
 // Busca (o crea) el ExamType por código; intenta traer nombre/UB desde Nomenclador si existe
 async function ensureExamTypeByCode(code: string) {
@@ -48,11 +49,14 @@ export async function listExamItems(req: Request, res: Response) {
     if (!/^\d{5,7}$/.test(code)) {
       return res.status(400).json({ error: 'Parámetro code inválido' });
     }
-     console.log('codigo' , code)
-    const et =  await ensureExamTypeByCode(code);
+    console.log('codigo', code)
+    const et = await ensureExamTypeByCode(code);
 
     const items = await prisma.examItemDef.findMany({
-      where: { examTypeId: et.id },
+      where: {
+        examTypeId: et.id,
+        isActive: true,
+      },
       orderBy: [{ sortOrder: 'asc' }],
     });
 
@@ -64,20 +68,24 @@ export async function listExamItems(req: Request, res: Response) {
 
 export async function createExamItem(req: Request, res: Response) {
   try {
-    const { code, key, label, unit, kind, sortOrder, refText , method } = req.body || {};
+    const { code, key, label, unit, kind, sortOrder, refText, method } = req.body || {};
     if (!code || !key || !label) {
       return res.status(400).json({ error: 'code, key y label son requeridos' });
     }
 
     const et = await ensureExamTypeByCode(String(code));
-    
-    const exists = await prisma.examItemDef.findFirst({ 
-      where: { examTypeId: et.id, key } 
+
+    const exists = await prisma.examItemDef.findFirst({
+      where: {
+        examTypeId: et.id,
+        key,
+        isActive: true,
+      },
     });
-    
+
     if (exists) {
-      return res.status(409).json({ 
-        error: `Ya existe un ítem con key "${key}" para el código ${code}` 
+      return res.status(409).json({
+        error: `Ya existe un ítem con key "${key}" para el código ${code}`
       });
     }
 
@@ -93,7 +101,7 @@ export async function createExamItem(req: Request, res: Response) {
         method: (method?.trim?.() || null),
       },
     });
-    
+
     res.status(201).json(created);
   } catch (error: any) {
     res.status(404).json({ error: error.message || 'Código no encontrado' });
@@ -122,7 +130,20 @@ export async function updateExamItem(req: Request, res: Response) {
 
 // DELETE /api/exam-item-def/:id
 export async function deleteExamItem(req: Request, res: Response) {
-  const { id } = req.params;
-  await prisma.examItemDef.delete({ where: { id } });
-  res.status(204).end();
+  try {
+    const { id } = req.params;
+
+    await prisma.examItemDef.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return res.status(204).end();
+  } catch (error: any) {
+    console.error('Error al desactivar ExamItemDef:', error);
+
+    return res.status(500).json({
+      error: 'No se pudo desactivar el ítem.',
+    });
+  }
 }
