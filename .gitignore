@@ -38,3 +38,7 @@ yarn.lock
 
 # Typescript
 *.tsbuildinfo
+
+prisma/dev.db
+prisma/dev.db-wal
+prisma/dev.db-shm
