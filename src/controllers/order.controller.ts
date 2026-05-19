@@ -19,7 +19,16 @@ export async function listOrders(req: Request, res: Response) {
       items: {
         include: {
           examType: true,
-          analytes: { include: { itemDef: true } },
+          analytes: {
+            where: {
+              itemDef: {
+                isActive: true,
+              },
+            },
+            include: {
+              itemDef: true,
+            },
+          },
           results: true,
         },
       },
@@ -43,7 +52,16 @@ export async function getOrder(req: Request, res: Response) {
     items: {
       include: {
         examType: true,
-        analytes: { include: { itemDef: true } },
+        analytes: {
+          where: {
+            itemDef: {
+              isActive: true,
+            },
+          },
+          include: {
+            itemDef: true,
+          },
+        },
       },
     },
   } as const;
@@ -57,10 +75,12 @@ export async function getOrder(req: Request, res: Response) {
   // Asegurá analytes en cada item
   for (const item of order.items) {
     const defs = await prisma.examItemDef.findMany({
-      where: { examTypeId: item.examTypeId },
+      where: {
+        examTypeId: item.examTypeId,
+        isActive: true,
+      },
       orderBy: { sortOrder: 'asc' },
     });
-
     const missing = defs.filter(d => !item.analytes.some(a => a.itemDefId === d.id));
     if (missing.length) {
       await prisma.$transaction(
@@ -373,7 +393,7 @@ export async function checkOrderNumber(req: Request, res: Response) {
       return res.status(400).json({ error: 'excludeId inválido' });
     }
     excludeId = n;
-  } 
+  }
 
   const exists = await prisma.testOrder.findFirst({
     where: {
